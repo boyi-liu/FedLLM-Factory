@@ -1,11 +1,13 @@
 import copy
 import os
 import math
+import random
 
 from transformers import TrainingArguments, Trainer
 from alg.base import BaseClient, BaseServer
 from datasets import load_dataset
 from utils.model_utils import load_model
+from utils.time_utils import time_record
 
 
 class FTBaseClient(BaseClient):
@@ -42,6 +44,7 @@ class FTBaseClient(BaseClient):
             "labels": self.tokenizer(example["answer"], return_tensors="pt", truncation=True, padding="max_length", max_length=512).input_ids[0]
         }
 
+    @time_record
     def run(self, model):
         client_model = copy.deepcopy(model)
         client_model.train()
@@ -78,6 +81,8 @@ class FTBaseServer(BaseServer):
         super().__init__(args, clients)
         self.model, _ = load_model(args)
         self.client_models = []
+        self.sample_rate = args.sr
+        self.wall_clock_time = 0
 
         self.round = 0
 
@@ -87,17 +92,19 @@ class FTBaseServer(BaseServer):
         self.aggregate()
 
     def sample(self):
-        pass
+        sample_num = int(self.sample_rate * len(self.clients))
+        self.sampled_clients = sorted(random.sample(self.clients, sample_num), key=lambda x: x.id)
 
     def local_run(self):
-        for client in self.clients: client.run(self.model)
+        for client in self.sampled_clients: client.run(self.model)
+        self.wall_clock_time += max([c.training_time for c in self.sampled_clients])
 
     def aggregate(self):
-        data_sum = sum([len(client.dataset['train']) for client in self.clients])
+        data_sum = sum([len(client.dataset['train']) for client in self.sampled_clients])
         from collections import defaultdict
         aggregated = defaultdict(lambda: 0)
 
-        for client in self.clients:
+        for client in self.sampled_clients:
             model = client.lora
             for k, v in model.items():
                 aggregated[k] = aggregated[k] + v * len(client.dataset['train']) / data_sum

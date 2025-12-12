@@ -29,6 +29,10 @@ class Config:
 
     test_gap: int = 1
 
+    ### async
+    alpha: float = 0.5
+
+
 
 def args_parser():
     cfg = Config()
