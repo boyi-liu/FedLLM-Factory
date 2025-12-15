@@ -1,4 +1,3 @@
-import copy
 import os
 import math
 import random
@@ -46,7 +45,9 @@ class FTBaseClient(BaseClient):
 
     @time_record
     def run(self, model):
-        client_model = copy.deepcopy(model)
+        # state = model.state_dict()
+        # client_model = copy.deepcopy(model)
+        client_model = model
         client_model.train()
 
         Trainer(
@@ -80,7 +81,8 @@ class FTBaseServer(BaseServer):
     def __init__(self, args, clients):
         super().__init__(args, clients)
         self.model, _ = load_model(args)
-        self.client_models = []
+
+        self.global_lora = {k: v for k, v in self.model.state_dict().items() if "lora_" in k}
         self.sample_rate = args.sr
         self.wall_clock_time = 0
 
@@ -96,7 +98,9 @@ class FTBaseServer(BaseServer):
         self.sampled_clients = sorted(random.sample(self.clients, sample_num), key=lambda x: x.id)
 
     def local_run(self):
-        for client in self.sampled_clients: client.run(self.model)
+        for client in self.sampled_clients:
+            client.run(self.model)
+            self.model.load_state_dict(self.global_lora, strict=False)  # NOTE: recover the model
         self.wall_clock_time += max([c.training_time for c in self.sampled_clients])
 
     def aggregate(self):
@@ -109,7 +113,8 @@ class FTBaseServer(BaseServer):
             for k, v in model.items():
                 aggregated[k] = aggregated[k] + v * len(client.dataset['train']) / data_sum
 
-        self.model.load_state_dict(aggregated, strict=False)
+        self.global_lora = aggregated
+        # self.model.load_state_dict(aggregated, strict=False)
         print("Aggregated model updated.")
 
     def test_all(self):
