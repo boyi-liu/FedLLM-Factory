@@ -39,6 +39,8 @@ class AsyncFTBaseServer(FTBaseServer):
     def local_run(self):
         for c in filter(lambda x: x.status != Status.ACTIVE, self.sampled_clients):
             c.run(self.model)
+            self.model.load_state_dict(self.global_lora, strict=False)
+
             heapq.heappush(self.client_queue, (self.wall_clock_time + c.training_time, c))
             c.status = Status.ACTIVE
         self.wall_clock_time, self.cur_client = heapq.heappop(self.client_queue)
@@ -54,10 +56,22 @@ class AsyncFTBaseServer(FTBaseServer):
         for k in server_lora.keys():
             aggregated[k] = alpha * client_lora[k] + (1 - alpha) * server_lora[k]
 
-        self.model.load_state_dict(aggregated, strict=False)
+        self.global_lora = aggregated
+        self.model.load_state_dict(self.global_lora, strict=False)  # NOTE: recover the model
         print("Aggregated model updated.")
 
         self.cur_client.status = Status.IDLE
 
     def weight_decay(self):
         return 1
+
+    def test_all(self):
+        all_metrics = []
+        for client in self.clients:
+            print(f"Testing on client {client.id} ...")
+            metrics = client.local_test(self.model)
+            all_metrics.append(metrics)
+
+        avg_loss = sum(m["eval_loss"] for m in all_metrics) / len(all_metrics)
+        avg_perplexity = sum(m["perplexity"] for m in all_metrics) / len(all_metrics)
+        return {'loss': avg_loss, 'perplexity': avg_perplexity}
