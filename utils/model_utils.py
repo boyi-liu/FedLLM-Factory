@@ -17,9 +17,9 @@ def load_model(args):
 
     lora_config = LoraConfig(
         task_type=TaskType.CAUSAL_LM,
-        r=8,
-        lora_alpha=32,
-        lora_dropout=0.05,
+        r=args.lora_rank,
+        lora_alpha=args.lora_alpha,
+        lora_dropout=args.lora_dropout,
         target_modules=["q_proj", "v_proj"]
     )
 

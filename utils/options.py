@@ -32,6 +32,11 @@ class Config:
     ### async
     alpha: float = 0.5
 
+    ### LoRA
+    lora_rank: int = 8
+    lora_alpha: int = 32
+    lora_dropout: float = 0.05
+
 
 
 def args_parser():
