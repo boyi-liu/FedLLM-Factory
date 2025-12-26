@@ -1,18 +1,20 @@
+import copy
 import os
 import math
 import random
 
+from peft import get_peft_model
 from transformers import TrainingArguments, Trainer
 from alg.base import BaseClient, BaseServer
 from datasets import load_dataset
-from utils.model_utils import load_model
+from utils.model_utils import load_model, load_tokenizer, load_lora_config
 from utils.time_utils import time_record
 
 
 class FTBaseClient(BaseClient):
     def __init__(self, id, args):
         super().__init__(id, args)
-        _, self.tokenizer = load_model(args)
+        self.tokenizer = load_tokenizer(args)
         self.training_args = TrainingArguments(
             output_dir=f"./client{self.id}",  # where to save the output log
             per_device_train_batch_size=args.bs,
@@ -45,6 +47,7 @@ class FTBaseClient(BaseClient):
 
     @time_record
     def run(self, model):
+        print(f'\nClient {self.id} starting...')
         client_model = model
         client_model.train()
 
@@ -55,7 +58,7 @@ class FTBaseClient(BaseClient):
             processing_class=self.tokenizer,
         ).train()
 
-        self.lora = {k: v for k, v in client_model.state_dict().items() if "lora_" in k}
+        self.lora = {k: v.clone() for k, v in client_model.state_dict().items() if "lora_" in k}
 
     def local_test(self, model):
         model.eval()
@@ -78,9 +81,9 @@ class FTBaseClient(BaseClient):
 class FTBaseServer(BaseServer):
     def __init__(self, args, clients):
         super().__init__(args, clients)
-        self.model, _ = load_model(args)
+        self.model = get_peft_model(load_model(args), load_lora_config(args))
 
-        self.global_lora = {k: v for k, v in self.model.state_dict().items() if "lora_" in k}
+        self.global_lora = {k: v.clone() for k, v in self.model.state_dict().items() if "lora_" in k}
         self.sample_rate = args.sr
         self.wall_clock_time = 0
 
