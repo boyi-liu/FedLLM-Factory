@@ -87,8 +87,6 @@ class Server(FTBaseServer):
             if "ravan_H" in name:
                 s_name = name.replace('ravan_H', 'ravan_s')
                 for client in self.sampled_clients:
-                    print(name in new_global_state.keys())
-                    print(name in client.lora.keys())
                     new_global_state[name] = new_global_state[name] + client.lora[name] * client.lora[s_name] * (len(client.dataset['train']) / total_samples)
             elif "ravan_s" in name:
                 # The global scaling factor s is always kept as 1 
