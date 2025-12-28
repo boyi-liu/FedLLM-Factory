@@ -103,12 +103,12 @@ class Client(FTBaseClient):
         return metrics
     
     def get_instance_alpha(self, model, input_ids):
-        # 1. 提取当前输入的特征 (使用 LLM 的隐藏状态)
+        # 1. Extract features from the current input (using the LLM's hidden states)
         with torch.no_grad():
             outputs = model(input_ids=input_ids, output_hidden_states=True)
             w_x = outputs.hidden_states[-1][:, -1, :] 
 
-        # 2. 采样本地训练集特征 (S=5)
+        # 2. Sample local training set features (S=5)
         S = 5
         indices = random.sample(range(len(self.dataset['train'])), min(S, len(self.dataset['train'])))
         
