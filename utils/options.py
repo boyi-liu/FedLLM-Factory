@@ -30,7 +30,7 @@ class Config:
     test_gap: int = 1
 
     ### async
-    alpha: float = 0.5
+    decay: float = 0.5
 
     ### LoRA
     lora_rank: int = 8
