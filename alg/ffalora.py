@@ -26,12 +26,12 @@ class Client(FTBaseClient):
             processing_class=self.tokenizer,
         ).train()
 
-        self.lora = {k: v for k, v in client_model.state_dict().items() if "lora_B" in k}
+        self.lora = {k: v.clone() for k, v in client_model.state_dict().items() if "lora_B" in k}
 
 class Server(FTBaseServer):
     def __init__(self, args, clients):
         super().__init__(args, clients)
-        self.global_lora = {k: v for k, v in self.model.state_dict().items() if "lora_B" in k}
+        self.global_lora = {k: v.clone() for k, v in self.model.state_dict().items() if "lora_B" in k}
 
     def run(self):
         self.sample()
