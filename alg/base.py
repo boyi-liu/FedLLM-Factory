@@ -24,6 +24,7 @@ class BaseServer(ABC):
     def __init__(self, args, clients):
         self.args = args
         self.clients = clients
+        for client in self.clients: client.server = self
         self.sampled_clients = []
 
     @abstractmethod
