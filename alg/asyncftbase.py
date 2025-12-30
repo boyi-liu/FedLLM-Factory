@@ -17,7 +17,7 @@ class AsyncFTBaseClient(FTBaseClient):
 class AsyncFTBaseServer(FTBaseServer):
     def __init__(self, args, clients):
         super().__init__(args, clients)
-        self.alpha = args.alpha
+        self.decay = args.decay
         self.client_queue = []
         self.cur_client = None
 
@@ -25,6 +25,7 @@ class AsyncFTBaseServer(FTBaseServer):
         self.sample()
         self.local_run()
         self.aggregate()
+        self.update_status()
 
     def sample(self):
         MAX_CONCURRENCY = int(len(self.clients) * self.sample_rate)
@@ -46,7 +47,7 @@ class AsyncFTBaseServer(FTBaseServer):
         self.wall_clock_time, self.cur_client = heapq.heappop(self.client_queue)
 
     def aggregate(self):
-        alpha = self.alpha * self.weight_decay()
+        alpha = self.decay * self.weight_decay()
         server_lora = {k: v for k, v in self.model.state_dict().items() if "lora_" in k}
         client_lora = self.cur_client.lora
 
@@ -60,18 +61,9 @@ class AsyncFTBaseServer(FTBaseServer):
         self.model.load_state_dict(self.global_lora, strict=False)  # NOTE: recover the model
         print("Aggregated model updated.")
 
+        
+    def update_status(self):
         self.cur_client.status = Status.IDLE
-
+        
     def weight_decay(self):
         return 1
-
-    def test_all(self):
-        all_metrics = []
-        for client in self.clients:
-            print(f"Testing on client {client.id} ...")
-            metrics = client.local_test(self.model)
-            all_metrics.append(metrics)
-
-        avg_loss = sum(m["eval_loss"] for m in all_metrics) / len(all_metrics)
-        avg_perplexity = sum(m["perplexity"] for m in all_metrics) / len(all_metrics)
-        return {'loss': avg_loss, 'perplexity': avg_perplexity}
