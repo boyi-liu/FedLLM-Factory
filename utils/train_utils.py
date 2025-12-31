@@ -56,7 +56,7 @@ class Trainer:
 
                 if step % (5 * accumulation_steps) == 0:
                     print(
-                        f"Round {self.client.server.round} | Epoch {epoch + 1} | Step {step} | Loss: {loss.item() * accumulation_steps:.4f}")
+                        f"Round {self.client.server.round} | Client {self.client.id} | Epoch {epoch + 1} | Step {step} | Loss: {loss.item() * accumulation_steps:.4f}")
 
         if (step + 1) % accumulation_steps != 0:
             scaler.step(optimizer)
@@ -89,5 +89,5 @@ class Trainer:
             "perplexity": perplexity
         }
 
-        print(f"Round {self.client.server.round} | Loss: {metrics['eval_loss']:.4f} | Perplexity: {metrics['perplexity']:.4f}")
+        print(f"Round {self.client.server.round} | Client {self.client.id} | Loss: {metrics['eval_loss']:.4f} | Perplexity: {metrics['perplexity']:.4f}")
         return metrics
