@@ -1,5 +1,4 @@
 import torch
-from transformers import Trainer
 
 from alg.ftbase import FTBaseClient, FTBaseServer
 from utils.time_utils import time_record
@@ -18,15 +17,7 @@ class Client(FTBaseClient):
             if "lora_B" in name:
                 param.requires_grad = True
 
-        client_model.train()
-
-        Trainer(
-            model=client_model,
-            args=self.training_args,
-            train_dataset=self.dataset['train'],
-            processing_class=self.tokenizer,
-        ).train()
-
+        self.trainer.train(client_model)
         self.lora = {k: v.clone() for k, v in client_model.state_dict().items()}
 
 class Server(FTBaseServer):
@@ -59,7 +50,7 @@ class Server(FTBaseServer):
             A = self.global_lora[a_key]
             B = aggregated[b_key]
             U, S, V = torch.svd(B @ A)
-            self.global_lora[a_key] = V[:r, :]
+            self.global_lora[a_key] = V.t()[:r, :]
             self.global_lora[b_key] = U[:, :r] @ torch.diag(S[:r])
             
         self.model.load_state_dict(self.global_lora, strict=False)
