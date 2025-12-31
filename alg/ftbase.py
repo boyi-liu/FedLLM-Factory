@@ -1,9 +1,8 @@
 import os
-import math
 import random
 
 from peft import get_peft_model
-from transformers import TrainingArguments, Trainer
+from utils.train_utils import Trainer
 from alg.base import BaseClient, BaseServer
 from datasets import load_dataset
 from utils.model_utils import load_model, load_tokenizer, load_lora_config
@@ -14,20 +13,9 @@ class FTBaseClient(BaseClient):
     def __init__(self, id, args):
         super().__init__(id, args)
         self.tokenizer = load_tokenizer(args)
-        self.training_args = TrainingArguments(
-            output_dir=f"./client{self.id}",  # where to save the output log
-            per_device_train_batch_size=args.bs,
-            gradient_accumulation_steps=args.grad_accum,
-            learning_rate=args.lr,
-            num_train_epochs=args.epoch,
-            logging_steps=10,  # gap of steps between two logging
-            save_steps=50000,
-            save_total_limit=2,
-            fp16=True,
-            optim="adamw_torch"
-        )
         self.load_data()
         self.lora = {}
+        self.trainer = Trainer(args=args, dataset=self.dataset, client=self)
 
     def load_data(self):
         train_dir = os.path.join('./dataset', self.args.dataset, f'train/{self.id}.json')
@@ -47,35 +35,11 @@ class FTBaseClient(BaseClient):
     @time_record
     def run(self, model):
         print(f'\nClient {self.id} starting...')
-        client_model = model
-        client_model.train()
-
-        Trainer(
-            model=client_model,
-            args=self.training_args,
-            train_dataset=self.dataset['train'],
-            processing_class=self.tokenizer,
-        ).train()
-
-        self.lora = {k: v.clone() for k, v in client_model.state_dict().items() if "lora_" in k}
+        self.trainer.train(model)
+        self.lora = {k: v.clone() for k, v in model.state_dict().items() if "lora_" in k}
 
     def local_test(self, model):
-        model.eval()
-
-        trainer = Trainer(
-            model=model,
-            args=self.training_args,
-            eval_dataset=self.dataset["test"],
-            processing_class=self.tokenizer
-        )
-        metrics = trainer.evaluate()
-        if "eval_loss" in metrics and metrics["eval_loss"] is not None and not math.isnan(metrics["eval_loss"]):
-            metrics["perplexity"] = float(math.exp(metrics["eval_loss"]))
-        else:
-            metrics["perplexity"] = float("inf")
-
-        print(f"Client {self.id} local test metrics:", metrics)
-        return metrics
+        return self.trainer.eval(model)
 
 class FTBaseServer(BaseServer):
     def __init__(self, args, clients):
@@ -123,7 +87,6 @@ class FTBaseServer(BaseServer):
             print(f"Testing on client {client.id} ...")
             metrics = client.local_test(self.model)
             all_metrics.append(metrics)
-
 
         avg_loss = sum(m["eval_loss"] for m in all_metrics) / len(all_metrics)
         avg_perplexity = sum(m["perplexity"] for m in all_metrics) / len(all_metrics)

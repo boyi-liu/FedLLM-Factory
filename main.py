@@ -39,9 +39,9 @@ class FedSim:
                     ret_dict = self.server.test_all()
                     avg_loss = ret_dict['loss']
                     avg_perplexity = ret_dict['perplexity']
-                    print(f"\n[Round {rnd}] Average Loss: {avg_loss:.4f}, Perplexity: {avg_perplexity:.4f}")
+                    print(f"\n[Round {rnd}] Average Loss: {avg_loss:.4f}, Perplexity: {avg_perplexity:.4f}, Wall clock time: {self.server.wall_clock_time:.2f}")
 
-                    self.output.write(f'\n[Round {rnd}] Average Loss: {avg_loss:.4f}, Perplexity: {avg_perplexity:.4f}')
+                    self.output.write(f'\n[Round {rnd}] Average Loss: {avg_loss:.4f}, Perplexity: {avg_perplexity:.4f}, Wall clock time: {self.server.wall_clock_time:.2f}')
                     self.output.flush()
 
         except KeyboardInterrupt:
