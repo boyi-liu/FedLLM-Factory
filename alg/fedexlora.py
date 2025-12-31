@@ -19,8 +19,6 @@ class Server(FTBaseServer):
 
         lora_keys = [k for k in self.global_lora.keys() if 'lora_A' in k]
 
-        from collections import defaultdict
-
         for a_key in lora_keys:
             b_key = a_key.replace('lora_A', 'lora_B')
             base_key = a_key.replace('.lora_A.default.weight', '.base_layer.weight')
