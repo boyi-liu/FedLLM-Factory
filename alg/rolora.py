@@ -1,5 +1,3 @@
-from transformers import Trainer
-
 from alg.ftbase import FTBaseClient, FTBaseServer
 from utils.time_utils import time_record
 
@@ -19,14 +17,7 @@ class Client(FTBaseClient):
             else:
                 if "lora_A" in name: param.requires_grad = True
 
-        client_model.train()
-
-        Trainer(
-            model=client_model,
-            args=self.training_args,
-            train_dataset=self.dataset['train'],
-            processing_class=self.tokenizer,
-        ).train()
+        self.trainer.train(client_model)
 
         if self.server.round % 2 == 1:
             self.lora = {k: v.clone() for k, v in client_model.state_dict().items() if "lora_B" in k}
