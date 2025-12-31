@@ -23,17 +23,9 @@ class Client(FTBaseClient):
     def run(self, model):
         print(f'\nClient {self.id} starting...')
         client_model = model
-        client_model.train()
-        
+        self.trainer.train(client_model)
+
         global_lora = {k: v.clone() for k, v in model.state_dict().items() if "lora_" in k}
-
-        Trainer(
-            model=client_model,
-            args=self.training_args,
-            train_dataset=self.dataset['train'],
-            processing_class=self.tokenizer,
-        ).train()
-
         self.lora = {k: v.clone() for k, v in client_model.state_dict().items() if "lora_" in k}
         if self.local_lora is None:
             self.local_lora = {k: v.clone() for k, v in client_model.state_dict().items() if "lora_" in k}
@@ -46,17 +38,10 @@ class Client(FTBaseClient):
                 merged_lora[k] = global_lora[k]
 
         client_model.load_state_dict(merged_lora, strict=False)
-        Trainer(
-            model=client_model,
-            args=self.training_args,
-            train_dataset=self.dataset['train'],
-            processing_class=self.tokenizer,
-        ).train()
-        
+        self.trainer.train(client_model)
         self.local_lora = {k: v.clone() for k, v in client_model.state_dict().items() if "lora_" in k}
 
     def local_test(self, model):
-        model.eval()
         total_loss = 0
         total_steps = 0
         
