@@ -8,6 +8,6 @@ def time_record(func):
         start_time = time.time()
         result = func(self, *args, **kwargs)
         end_time = time.time()
-        self.training_time = end_time - start_time
+        self.training_time = (end_time - start_time) * self.delay
         return result
     return wrapper

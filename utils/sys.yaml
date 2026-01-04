@@ -1,0 +1,4 @@
+# device heterogeneity config
+dev:
+  ## Jetson TX2, Jetson Nano, Raspberry Pi
+  dev_prop: 1 1 1

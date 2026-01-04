@@ -2,6 +2,8 @@ import os
 import random
 
 from peft import get_peft_model
+
+from utils.sys_utils import device_config
 from utils.train_utils import Trainer
 from alg.base import BaseClient, BaseServer
 from datasets import load_dataset
@@ -49,8 +51,9 @@ class FTBaseServer(BaseServer):
         self.global_lora = {k: v.clone() for k, v in self.model.state_dict().items() if "lora_" in k}
         self.sample_rate = args.sr
         self.wall_clock_time = 0
-
         self.round = 0
+
+        for client, delay in zip(clients, device_config(args)): client.delay = delay
 
     def run(self):
         self.sample()
