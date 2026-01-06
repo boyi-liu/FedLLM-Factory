@@ -8,10 +8,6 @@ class BaseClient(ABC):
         self.dataset = None
 
     @abstractmethod
-    def load_data(self):
-        pass
-
-    @abstractmethod
     def run(self, model):
         pass
 

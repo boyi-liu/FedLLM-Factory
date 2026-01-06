@@ -1,12 +1,10 @@
-import os
 import random
 
 from peft import get_peft_model
-
+from utils.data_utils import load_data
 from utils.sys_utils import device_config
 from utils.train_utils import Trainer
 from alg.base import BaseClient, BaseServer
-from datasets import load_dataset
 from utils.model_utils import load_model, load_tokenizer, load_lora_config
 from utils.time_utils import time_record
 
@@ -15,24 +13,9 @@ class FTBaseClient(BaseClient):
     def __init__(self, id, args):
         super().__init__(id, args)
         self.tokenizer = load_tokenizer(args)
-        self.load_data()
+        self.dataset = load_data(args=args, idx=self.id)
         self.lora = {}
         self.trainer = Trainer(args=args, dataset=self.dataset, client=self)
-
-    def load_data(self):
-        train_dir = os.path.join('./dataset', self.args.dataset, f'train/{self.id}.json')
-        test_dir = os.path.join('./dataset', self.args.dataset, f'test/{self.id}.json')
-
-        self.dataset = load_dataset("json", data_files={'train': train_dir, 'test': test_dir})
-        self.dataset['train'] = self.dataset['train'].map(self.format_example)
-        self.dataset['test'] = self.dataset['test'].map(self.format_example)
-
-    def format_example(self, example):
-        prompt = f"Instruct: {example['question']}\nAnswer:"
-        return {
-            "input_ids": self.tokenizer(prompt, return_tensors="pt", truncation=True, padding="max_length", max_length=512).input_ids[0],
-            "labels": self.tokenizer(example["answer"], return_tensors="pt", truncation=True, padding="max_length", max_length=512).input_ids[0]
-        }
 
     @time_record
     def run(self, model):
