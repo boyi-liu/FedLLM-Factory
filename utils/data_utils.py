@@ -9,12 +9,18 @@ def load_data(args, idx):
     test_dir = os.path.join('./dataset', dataset, f'test/{idx}.json')
 
     dataset = load_dataset("json", data_files={'train': train_dir, 'test': test_dir})
-    dataset['train'] = dataset['train'].map(format_QA)
-    dataset['test'] = dataset['test'].map(format_QA)
+    dataset['train'] = dataset['train'].map(get_format_func(args))
+    dataset['test'] = dataset['test'].map(get_format_func(args))
 
     return dataset
 
-def format_QA(self, example):
+def get_format_func(args):
+    if args.model == 'bert':
+        pass
+    else:
+        return _format_QA
+
+def _format_QA(self, example):
     prompt = f"Instruct: {example['question']}\nAnswer:"
     return {
         "input_ids": self.tokenizer(prompt, return_tensors="pt", truncation=True, padding="max_length", max_length=512).input_ids[0],
