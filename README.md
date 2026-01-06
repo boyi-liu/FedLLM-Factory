@@ -3,6 +3,7 @@
 FedLLM Factory is a unified library for LoRA-based federated LLM fine-tuning.
 ![framework.svg](assets/framework.svg)
 
+### Supported Methods
 Currently, it supports following 10+ baselines:
 
 + **FedIT**. Towards Building the Federated GPT: Federated Instruction Tuning. _ICASSP 2024_.
@@ -17,6 +18,7 @@ Fine-Tuning of Foundation Models. _ACL 2025_.
 + **FedSVD**. FedSVD: Adaptive Orthogonalization for Private Federated Learning with LoRA. _NeurIPS 2025_.
 + **RAVAN**. RAVAN: Multi-Head Low-Rank Adaptation for Federated Fine-Tuning. _NeurIPS 2025_.
 + **RoLoRA**. Robust Federated Finetuning of LLMs via Alternating Optimization of LoRA. _NeurIPS 2025_.
++ **FedLEASE**. Adaptive LoRA Experts Allocation and Selection for Federated Fine-Tuning. _NeurIPS 2025_.
 + **SLoRA**. SLoRA: Federated Parameter Efficient Fine-Tuning of Language Models. 2023.
 
 Also, we support asynchronous version of federated LLM tuning.
