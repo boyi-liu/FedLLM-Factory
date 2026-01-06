@@ -1,7 +1,7 @@
 import torch
 import os
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import LoraConfig, get_peft_model, TaskType, PeftModel
+from peft import LoraConfig, TaskType
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
