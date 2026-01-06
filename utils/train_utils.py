@@ -75,11 +75,11 @@ class Trainer:
             input_ids = torch.stack(batch['input_ids']).transpose(0, 1).to(model.device)
             labels = torch.stack(batch['labels']).transpose(0, 1).to(model.device)
 
-            with torch.no_grad():
-                outputs = model(input_ids=input_ids, labels=labels)
-                loss = outputs.loss
-                total_loss += loss.item()
-                total_steps += 1
+            with torch.no_grad(), autocast('cuda'):
+                    outputs = model(input_ids=input_ids, labels=labels)
+                    loss = outputs.loss
+                    total_loss += loss.item()
+                    total_steps += 1
 
         avg_loss = total_loss / total_steps if total_steps > 0 else 0
         perplexity = math.exp(avg_loss) if avg_loss < 20 else float("inf")
