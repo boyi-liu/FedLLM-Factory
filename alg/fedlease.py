@@ -112,6 +112,11 @@ class Client(FTBaseClient):
         b_params = [self.lora[k].detach().view(-1) for k in self.lora.keys() if "lora_B" in k]
         return b_params
 
+    def local_test(self, model):
+        for m in model.modules():
+            if isinstance(m, FedLEASEMoELayer): m.register_expert(self.cluster_id)
+        super().local_test(model)
+
 class Server(FTBaseServer):
     def __init__(self, args, clients):
         super().__init__(args, clients)
