@@ -20,6 +20,9 @@ Fine-Tuning of Foundation Models. _ACL 2025_.
 + **RoLoRA**. Robust Federated Finetuning of LLMs via Alternating Optimization of LoRA. _NeurIPS 2025_.
 + **FedLEASE**. Adaptive LoRA Experts Allocation and Selection for Federated Fine-Tuning. _NeurIPS 2025_.
 + **SLoRA**. SLoRA: Federated Parameter Efficient Fine-Tuning of Language Models. 2023.
++ **ILoRA**. ILoRA: Federated Learning with Low-Rank Adaptation for Heterogeneous Client Aggregation. 2025.
++ **FedRotLoRA**. FedRot-LoRA: Mitigating Rotational Misalignment in Federated LoRA. 2026.
++ **HiLoRA**. HiLoRA: Hierarchical Low-Rank Adaptation for Personalized Federated Learning. 2026.
 
 Also, we support asynchronous version of federated LLM tuning.
 To implement an asynchronous federated LLM fine-tuning algorithm, you can extend `asyncftbase.py`.
@@ -45,3 +48,11 @@ python main.py --alg fedit --epoch 1
 ```
 The args can be configured in `utils/options.py`. 
 
+### Supported Datasets
+#### Natural Language Understanding (NLU)
++ **SST-2**
++ **IMDB**
+#### Question Answering (QA)
++ **Dolly**
+#### Mathematical Reasoning
++ **GSM8K**
