@@ -12,7 +12,6 @@ class Client(FTBaseClient):
         super().__init__(id, args)
         self.phase = 1
         self.sft_mask = None
-
         self.state = {}
 
     def set_phase(self, phase, mask=None):

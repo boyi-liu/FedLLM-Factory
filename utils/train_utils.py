@@ -53,7 +53,6 @@ class Trainer:
                     scaler.update()
                     optimizer.zero_grad()
                     global_step += 1
-
                 if step % (5 * accumulation_steps) == 0:
                     print(
                         f"Round {self.client.server.round} | Client {self.client.id} | Epoch {epoch + 1} | Step {step} | Loss: {loss.item() * accumulation_steps:.4f}")
