@@ -39,20 +39,39 @@ class Trainer:
 
         for epoch in range(self.args.epoch):
             for step, batch in enumerate(train_loader):
-                input_ids = torch.stack(batch['input_ids']).transpose(0, 1).to(model.device)
-                labels = torch.stack(batch['labels']).transpose(0, 1).to(model.device)
+                if self.args.task_type == 'SEQ_CLS':
+                    input_ids = torch.stack(batch['input_ids']).transpose(0, 1).to(model.device)
+                    attention_mask = torch.stack(batch['attention_mask']).transpose(0, 1).to(model.device)
+                    labels = torch.tensor(batch['labels']).to(model.device)
+                    
+                    with autocast('cuda'):  
+                        outputs = model(
+                            input_ids=input_ids,
+                            attention_mask=attention_mask,
+                            labels=labels
+                        )
+                        loss = outputs.loss
+                        loss = loss / accumulation_steps
+                    scaler.scale(loss).backward()
+                    
+                elif self.args.task_type == 'CAUSAL_LM':
+                    input_ids = torch.stack(batch['input_ids']).transpose(0, 1).to(model.device)
+                    labels = torch.stack(batch['labels']).transpose(0, 1).to(model.device)
 
-                with autocast('cuda'):
-                    outputs = model(input_ids=input_ids, labels=labels)
-                    loss = outputs.loss
-                    loss = loss / accumulation_steps
+                    with autocast('cuda'):
+                        outputs = model(input_ids=input_ids, labels=labels)
+                        loss = outputs.loss
+                        loss = loss / accumulation_steps
 
-                scaler.scale(loss).backward()
+                    scaler.scale(loss).backward()
                 if (step + 1) % accumulation_steps == 0:
                     scaler.step(optimizer)
                     scaler.update()
                     optimizer.zero_grad()
                     global_step += 1
+                    
+                if global_step >= 10: break
+                
                 if step % (5 * accumulation_steps) == 0:
                     print(
                         f"Round {self.client.server.round} | Client {self.client.id} | Epoch {epoch + 1} | Step {step} | Loss: {loss.item() * accumulation_steps:.4f}")
@@ -65,28 +84,48 @@ class Trainer:
 
     def eval(self, model):
         model.eval()
-        total_loss = 0
-        total_steps = 0
+        
+        if self.args.task_type == 'SEQ_CLS':
+            correct = 0
+            total = 0
+            for batch in self.eval_loader:
+                input_ids = torch.stack(batch['input_ids']).transpose(0, 1).to(model.device)
+                attention_mask = torch.stack(batch['attention_mask']).transpose(0, 1).to(model.device)
+                labels = torch.tensor(batch['labels']).to(model.device)
+                with torch.no_grad(), autocast('cuda'):
+                    outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+                    preds = torch.argmax(outputs.logits, dim=-1)
+                    correct += (preds == labels).sum().item()
+                    total += labels.size(0)
+                if total >= 100: break
+            accuracy = correct / total if total > 0 else 0
+            metrics = {
+                'accuracy': accuracy
+            }
+            print(f"Round {self.client.server.round} | Client {self.client.id} | Accuracy: {metrics['accuracy']:.4f}")
+        elif self.args.task_type == 'CAUSAL_LM':
+            total_loss = 0
+            total_steps = 0
 
-        eval_loader = self.eval_loader
+            eval_loader = self.eval_loader
 
-        for batch in eval_loader:
-            input_ids = torch.stack(batch['input_ids']).transpose(0, 1).to(model.device)
-            labels = torch.stack(batch['labels']).transpose(0, 1).to(model.device)
+            for batch in eval_loader:
+                input_ids = torch.stack(batch['input_ids']).transpose(0, 1).to(model.device)
+                labels = torch.stack(batch['labels']).transpose(0, 1).to(model.device)
 
-            with torch.no_grad(), autocast('cuda'):
+                with torch.no_grad(), autocast('cuda'):
                     outputs = model(input_ids=input_ids, labels=labels)
                     loss = outputs.loss
                     total_loss += loss.item()
                     total_steps += 1
 
-        avg_loss = total_loss / total_steps if total_steps > 0 else 0
-        perplexity = math.exp(avg_loss) if avg_loss < 20 else float("inf")
+            avg_loss = total_loss / total_steps if total_steps > 0 else 0
+            perplexity = math.exp(avg_loss) if avg_loss < 20 else float("inf")
 
-        metrics = {
-            "eval_loss": avg_loss,
-            "perplexity": perplexity
-        }
+            metrics = {
+                "eval_loss": avg_loss,
+                "perplexity": perplexity
+            }
 
-        print(f"Round {self.client.server.round} | Client {self.client.id} | Loss: {metrics['eval_loss']:.4f} | Perplexity: {metrics['perplexity']:.4f}")
+            print(f"Round {self.client.server.round} | Client {self.client.id} | Loss: {metrics['eval_loss']:.4f} | Perplexity: {metrics['perplexity']:.4f}")
         return metrics

@@ -74,6 +74,9 @@ class FTBaseServer(BaseServer):
             metrics = client.local_test(self.model)
             all_metrics.append(metrics)
 
-        avg_loss = sum(m["eval_loss"] for m in all_metrics) / len(all_metrics)
-        avg_perplexity = sum(m["perplexity"] for m in all_metrics) / len(all_metrics)
-        return {'loss': avg_loss, 'perplexity': avg_perplexity}
+        res_dict = {}
+        for k in all_metrics[0].keys():
+            avg_metric = sum(m[k] for m in all_metrics) / len(all_metrics)
+            res_dict[k] = avg_metric
+            
+        return res_dict

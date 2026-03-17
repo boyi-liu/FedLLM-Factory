@@ -37,11 +37,13 @@ class FedSim:
                 # ===================== test =====================
                 if (self.args.rnd - rnd <= 10) or (rnd % TEST_GAP == (TEST_GAP-1)):
                     ret_dict = self.server.test_all()
-                    avg_loss = ret_dict['loss']
-                    avg_perplexity = ret_dict['perplexity']
-                    print(f"\n[Round {rnd}] Average Loss: {avg_loss:.4f}, Perplexity: {avg_perplexity:.4f}, Wall clock time: {self.server.wall_clock_time:.2f}")
-
-                    self.output.write(f'\n[Round {rnd}] Average Loss: {avg_loss:.4f}, Perplexity: {avg_perplexity:.4f}, Wall clock time: {self.server.wall_clock_time:.2f}')
+                    
+                    res_text = f'\n[Round {rnd}] Test Results:\n'
+                    for k, v in ret_dict.items():
+                        res_text += f"{k}: {v:.4f}\n"
+                    res_text += f'Wall clock time: {self.server.wall_clock_time:.2f} seconds\n'
+                    print(res_text)       
+                    self.output.write(res_text)
                     self.output.flush()
 
         except KeyboardInterrupt:
