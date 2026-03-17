@@ -1,15 +1,15 @@
 # basic config
-alg: flexlora
+alg: fedit
 suffix: default
 device: 3
-dataset: gsm8k
-model: qwen
+dataset: sst2
+model: roberta-base
 
 # federated config
-cn: 1
+cn: 5
 sr: 1
-rnd: 30
-tg: 10
+rnd: 20
+tg: 1
 
 # local training config
 bs: 4
