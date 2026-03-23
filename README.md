@@ -23,6 +23,7 @@ Fine-Tuning of Foundation Models. _ACL 2025_.
 + **ILoRA**. ILoRA: Federated Learning with Low-Rank Adaptation for Heterogeneous Client Aggregation. 2025.
 + **FedRotLoRA**. FedRot-LoRA: Mitigating Rotational Misalignment in Federated LoRA. 2026.
 + **HiLoRA**. HiLoRA: Hierarchical Low-Rank Adaptation for Personalized Federated Learning. 2026.
++ **FedMomentum**. FedMomentum: Preserving LoRA Training Momentum in Federated Fine-Tuning. 2026.
 
 Also, we support asynchronous version of federated LLM tuning.
 To implement an asynchronous federated LLM fine-tuning algorithm, you can extend `asyncftbase.py`.
@@ -56,3 +57,10 @@ The args can be configured in `utils/options.py`.
 + **Dolly**
 #### Mathematical Reasoning
 + **GSM8K**
+
+### To-Do List
++ Add more datasets, e.g., MMLU, C4, etc.
++ Add more baselines, scaling to 20+
++ Add more evaluation metrics, e.g., ROUGE, BLEU, etc.
++ Support rank heterogeneity
++ Add frontend
