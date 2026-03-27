@@ -1,7 +1,7 @@
 # FedLLM Factory
 
 FedLLM Factory is a unified library for LoRA-based federated LLM fine-tuning.
-![framework.svg](assets/framework.svg)
+![logo.png](assets/logo.png)
 
 ### Supported Methods
 Currently, it supports following 10+ baselines:
