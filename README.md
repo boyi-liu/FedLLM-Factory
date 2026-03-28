@@ -58,6 +58,20 @@ The args can be configured in `utils/options.py`.
 #### Mathematical Reasoning
 + **GSM8K**
 
+
+### Frontend Usage
+We also provide a simple frontend for users to easily run the code.
+To use the frontend, you should install `streamlit` first.
+Then, you can run the frontend by
+```
+streamlit run webui.py    
+```
+
+Then you can select the dataset, method, and other parameters in the frontend and click the "Start Running" button to start the fine-tuning process.
+
+![webui.png](assets/webui.png)
+
+
 ### To-Do List
 + Add more datasets, e.g., MMLU, C4, etc.
 + Add more baselines, scaling to 20+
