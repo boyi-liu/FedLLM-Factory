@@ -2,49 +2,38 @@ import argparse
 import importlib.util
 import yaml
 
-from dataclasses import dataclass
-
-
-@dataclass
-class Config:
-    alg: str = 'fedit'
-
-    ### basic setting
-    suffix: str = 'default'
-    device: int = 0
-    dataset: str = ''
-    model: str = ''
-
-    ### FL setting
-    cn: int = 10
-    sr: float = 1.0 # sample rate
-    rnd: int = 10 # round
-    tg: int = 1
-
-    ### local training setting
-    bs: int = 2  # batch size
-    grad_accum: int = 8  # gradient accumulate
-    epoch: int = 5
-    lr: float = 1e-5
-
-    test_gap: int = 1
-
-    ### async
-    decay: float = 0.5
-
-    ### LoRA
-    lora_rank: int = 8
-    lora_alpha: int = 32
-    lora_dropout: float = 0.05
-
-
 
 def args_parser():
-    cfg = Config()
     parser = argparse.ArgumentParser()
+    
+    ### basic setting
+    parser.add_argument('--alg', type=str, default='fedit', help='algorithm name')
+    parser.add_argument('--suffix', type=str, default='default', help='experiment suffix')
+    parser.add_argument('--device', type=int, default=0, help='device id')
+    parser.add_argument('--dataset', type=str, default='', help='dataset name')
+    parser.add_argument('--model', type=str, default='', help='model name')
 
-    for field, value in cfg.__dict__.items():
-        parser.add_argument(f"--{field}", type=type(value), default=value)
+    ### FL setting
+    parser.add_argument('--cn', type=int, default=10, help='number of clients')
+    parser.add_argument('--sr', type=float, default=1.0, help='sample rate')
+    parser.add_argument('--rnd', type=int, default=10, help='number of rounds')
+    parser.add_argument('--tg', type=int, default=1, help='test gap')
+
+    ### local training setting
+    parser.add_argument('--bs', type=int, default=2, help='batch size')
+    parser.add_argument('--grad_accum', type=int, default=8, help='gradient accumulation steps')
+    parser.add_argument('--epoch', type=int, default=5, help='local epochs')
+    parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
+
+    parser.add_argument('--test_gap', type=int, default=1, help='test interval')
+
+    ### async
+    parser.add_argument('--decay', type=float, default=0.5, help='decay rate')
+
+    ### LoRA
+    parser.add_argument('--lora_rank', type=int, default=8, help='LoRA rank')
+    parser.add_argument('--lora_alpha', type=int, default=32, help='LoRA alpha')
+    parser.add_argument('--lora_dropout', type=float, default=0.05, help='LoRA dropout')
 
     # === read args from yaml ===
     with open('config.yaml', 'r') as f:
