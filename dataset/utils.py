@@ -62,8 +62,8 @@ def split_dir(all_data, config):
         test_idxs = client_indices[split_idx:]
 
         # remove the column "category" before saving
-        train_data = [{k: v for k, v in all_data[idx].items() if k != "category"} for idx in train_idxs]
-        test_data = [{k: v for k, v in all_data[idx].items() if k != "category"} for idx in test_idxs]
+        train_data = [{k: v for k, v in all_data[idx].items()} for idx in train_idxs]
+        test_data = [{k: v for k, v in all_data[idx].items()} for idx in test_idxs]
         
         save_file(train_data, f"{dir_path}/train/{j}.jsonl")
         save_file(test_data, f"{dir_path}/test/{j}.jsonl")
