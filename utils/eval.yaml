@@ -1,0 +1,42 @@
+# Evaluation configuration: dataset -> task_type + metrics
+# task_type: SEQ_CLS | CAUSAL_LM
+# primary_metric: the metric used for model selection / reporting
+
+datasets:
+  sst2:
+    task_type: SEQ_CLS
+    metrics: [accuracy]
+    primary_metric: accuracy
+
+  imdb:
+    task_type: SEQ_CLS
+    metrics: [accuracy]
+    primary_metric: accuracy
+
+  gsm8k:
+    task_type: CAUSAL_LM
+    metrics: [exact_match, perplexity]
+    primary_metric: exact_match
+
+  dolly:
+    task_type: CAUSAL_LM
+    metrics: [perplexity]
+    primary_metric: perplexity
+
+  alpaca:
+    task_type: CAUSAL_LM
+    metrics: [perplexity]
+    primary_metric: perplexity
+
+  sensorqa:
+    task_type: CAUSAL_LM
+    metrics: [perplexity]
+    primary_metric: perplexity
+
+  homebench:
+    task_type: CAUSAL_LM
+    metrics: [perplexity]
+    primary_metric: perplexity
+
+# Global eval settings
+eval_samples: 100   # max samples used during evaluation (0 = full test set)

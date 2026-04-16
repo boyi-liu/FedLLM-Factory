@@ -4,6 +4,7 @@ from peft import get_peft_model
 from utils.data_utils import load_data
 from utils.sys_utils import device_config
 from utils.train_utils import Trainer
+from utils.eval_utils import Evaluator
 from alg.base import BaseClient, BaseServer
 from utils.model_utils import load_model, load_tokenizer, load_lora_config
 from utils.time_utils import time_record
@@ -16,15 +17,15 @@ class FTBaseClient(BaseClient):
         self.dataset = load_data(args=args, idx=self.id)
         self.lora = {}
         self.trainer = Trainer(args=args, dataset=self.dataset, client=self)
+        self.evaluator = Evaluator(args=args, dataset=self.dataset)
 
     @time_record
     def run(self, model):
-        print(f'\nClient {self.id} starting...')
         self.trainer.train(model)
         self.lora = {k: v.clone() for k, v in model.state_dict().items() if "lora_" in k}
 
     def local_test(self, model):
-        return self.trainer.eval(model)
+        return self.evaluator.evaluate(model, round_idx=self.server.round, client_id=self.id)
 
 class FTBaseServer(BaseServer):
     def __init__(self, args, clients):
