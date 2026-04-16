@@ -19,11 +19,19 @@ class FedSim:
         self.output = open(f'./{output_path}.txt', 'a')
 
         # === route to algorithm module ===
-        alg_module = importlib.import_module(f'alg.{args.alg}')
+        if args.mode == 'prototype':
+            alg_module = importlib.import_module(f'alg.{args.alg}')
+        elif args.mode == 'realistic':
+            alg_module = importlib.import_module(f'alg.{args.alg}_event')
 
         # === init clients & server ===
         self.clients = [alg_module.Client(idx, args) for idx in tqdm(range(args.cn), desc="Loading clients...")]
         self.server = alg_module.Server(args, self.clients)
+        
+        if args.mode == 'prototype':
+            self.simulate()
+        elif args.mode == 'realistic':
+            self.simulate_ddl()
 
     def simulate(self):
         TEST_GAP = self.args.test_gap
@@ -41,7 +49,7 @@ class FedSim:
                     res_text = f'\n[Round {rnd}] Test Results:\n'
                     for k, v in ret_dict.items():
                         res_text += f"{k}: {v:.4f}\n"
-                    res_text += f'Wall clock time: {self.server.wall_clock_time:.2f} seconds\n'
+                    res_text += f'Wall clock time: {self.server.wall_clock_time}\n'
                     print(res_text)       
                     self.output.write(res_text)
                     self.output.flush()
@@ -50,13 +58,28 @@ class FedSim:
             ...
         finally:
             pass
-            # avg_count = 10
-            # acc_avg = np.mean(acc_list[-avg_count:]).item()
-            # acc_max = np.max(acc_list).item()
-            #
-            # self.output.write('==========Summary==========\n')
-            # self.output.write(f'[Total] Acc: {acc_avg:.2f} | Max Acc: {acc_max:.2f}\n')
+        
+    
+    def simulate_ddl(self):
+        TEST_GAP = self.args.test_gap
+        try:
+            while self.server.early_break is False:
+                self.server.run()
+                
+                if (self.args.rnd - self.server.round <= 10) or (self.server.round % TEST_GAP == (TEST_GAP-1)):
+                    ret_dict = self.server.test_all()
+                    res_text = f'[Round {self.server.round} | Wall clock time: {self.server.wall_clock_time}]\n'
+                    for k, v in ret_dict.items():
+                        res_text += f"{k}: {v:.4f}\n"
+                    
+                    print(res_text)       
+                    self.output.write(res_text)
+                    self.output.flush()
 
+        except KeyboardInterrupt:
+            ...
+        finally:
+            pass
 
 if __name__ == '__main__':
-    FedSim(args=args_parser()).simulate()
+    FedSim(args=args_parser())

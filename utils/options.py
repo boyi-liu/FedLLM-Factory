@@ -1,5 +1,5 @@
 import argparse
-import importlib.util
+import importlib
 import yaml
 
 
@@ -18,17 +18,23 @@ def args_parser():
     parser.add_argument('--sr', type=float, default=1.0, help='sample rate')
     parser.add_argument('--rnd', type=int, default=10, help='number of rounds')
     parser.add_argument('--tg', type=int, default=1, help='test gap')
+    parser.add_argument('--session_time', type=float, default=24, help='round session duration in hours')
 
     ### local training setting
     parser.add_argument('--bs', type=int, default=2, help='batch size')
     parser.add_argument('--grad_accum', type=int, default=8, help='gradient accumulation steps')
     parser.add_argument('--epoch', type=int, default=5, help='local epochs')
-    parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
+    parser.add_argument('--step', type=int, default=10, help='local steps')
+    parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 
     parser.add_argument('--test_gap', type=int, default=1, help='test interval')
 
     ### async
     parser.add_argument('--decay', type=float, default=0.5, help='decay rate')
+    
+    ### event mode
+    parser.add_argument('--mode', type=str, default='prototype', help='simulation mode: prototype or realistic')
+    parser.add_argument('--upload_bandwidth', type=float, default=1.0, help='uplink bandwidth in Mbps for upload delay estimation')
 
     ### LoRA
     parser.add_argument('--lora_rank', type=int, default=8, help='LoRA rank')
