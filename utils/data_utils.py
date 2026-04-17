@@ -27,8 +27,8 @@ def get_format_func(args, tokenizer):
                     max_length=512
                 )
             return {
-                "input_ids": tokenized.input_ids[0],
-                "attention_mask": tokenized.attention_mask[0],
+                "input_ids": tokenized.input_ids[0].tolist(),
+                "attention_mask": tokenized.attention_mask[0].tolist(),
                 "labels": example["label"]
             }
         return _format_classification
@@ -42,7 +42,10 @@ def get_format_func(args, tokenizer):
                 padding="max_length",
                 max_length=512
             )["input_ids"]
-            prompt_len = len(tokenizer(prompt, add_special_tokens=False)["input_ids"])
+            prompt_len = min(
+                len(tokenizer(prompt, add_special_tokens=False)["input_ids"]),
+                len(input_ids)
+            )
             pad_id = tokenizer.pad_token_id
             labels = [-100] * prompt_len + [
                 t if t != pad_id else -100 for t in input_ids[prompt_len:]
