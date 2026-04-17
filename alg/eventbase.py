@@ -123,8 +123,8 @@ class EventBaseClient(BaseClient):
         try:
             self.windows: List[dict] = get_trainable_windows(id)
         except (KeyError, FileNotFoundError):
-            self.windows = []
-
+            self.windows = None
+            
     @time_record
     def run(self, model):
         self.trainer.train(model)
@@ -187,7 +187,7 @@ class EventBaseServer(BaseServer):
 
         # Clients with no trace data get one large window covering the full session.
         for client in clients:
-            if not client.windows:
+            if client.windows is None:
                 client.windows = [{'start': epoch, 'end': self._deadline}]
                 print(f'[init] Client {client.id}: no trace data — '
                       f'using full session window ({epoch} → {self._deadline}).')
@@ -252,20 +252,15 @@ class EventBaseServer(BaseServer):
 
     def _on_training_done(self, event: Event) -> None:
         client: EventBaseClient = event.client
-        if client.state != ClientState.TRAINING:
-            # Window closed before training finished — work already discarded
-            return
-        print(f'[{self.wall_clock_time}] Client {client.id}: training done, uploading.')
+        upload_done_at = event.time + self.upload_delay
         client.state = ClientState.UPLOADING
-        self.event_queue.push(
-            Event(event.time + self.upload_delay, EventType.UPLOAD_DONE, client)
-        )
+        
+        if not self._window_closes_before_upload(client, upload_done_at):
+            self.event_queue.push(Event(upload_done_at, EventType.UPLOAD_DONE, client))
+        
 
     def _on_upload_done(self, event: Event) -> None:
         client: EventBaseClient = event.client
-        if client.state != ClientState.UPLOADING:
-            # Window closed mid-upload
-            return
         client.state = ClientState.AVAILABLE
         self._uploads_this_round.append(client)
         print(f'[{self.wall_clock_time}] Client {client.id}: upload complete '
@@ -316,4 +311,13 @@ class EventBaseServer(BaseServer):
         # Restore global weights so the next client trains from the same base
         self.model.load_state_dict(self.global_lora, strict=False)
         finish_at = self.wall_clock_time + timedelta(seconds=client.training_time)
-        self.event_queue.push(Event(finish_at, EventType.TRAINING_DONE, client))
+        
+        if not self._window_closes_before_upload(client, finish_at):
+            self.event_queue.push(Event(finish_at, EventType.TRAINING_DONE, client))
+        
+        
+    def _window_closes_before_upload(self, client: EventBaseClient, upload_done_at: datetime) -> bool:
+        return any(
+            e.type == EventType.WINDOW_CLOSE and e.client is client and e.time < upload_done_at
+            for e in self.event_queue._heap
+        )
