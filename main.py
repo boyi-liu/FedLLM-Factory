@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import os
 
+from utils.logger import get_logger
 from utils.options import args_parser
 from tqdm import tqdm
 
@@ -12,11 +13,7 @@ class FedSim:
     def __init__(self, args):
         self.args = args
         args.suffix = f'exp/{args.suffix}'
-        os.makedirs(f'./{args.suffix}', exist_ok=True)
-
-        output_path = f'{args.suffix}/{args.alg}_{args.dataset}_{args.model}_' \
-                      f'{args.cn}c_{args.epoch}E_lr{args.lr}'
-        self.output = open(f'./{output_path}.txt', 'a')
+        self.logger = get_logger(args)
 
         # === route to algorithm module ===
         if args.mode == 'prototype':
@@ -45,14 +42,8 @@ class FedSim:
                 # ===================== test =====================
                 if (self.args.rnd - rnd <= 10) or (rnd % TEST_GAP == (TEST_GAP-1)):
                     ret_dict = self.server.test_all()
-                    
-                    res_text = f'\n[Round {rnd}] Test Results:\n'
-                    for k, v in ret_dict.items():
-                        res_text += f"{k}: {v:.4f}\n"
-                    res_text += f'Wall clock time: {self.server.wall_clock_time}\n'
-                    print(res_text)       
-                    self.output.write(res_text)
-                    self.output.flush()
+                    metrics_str = '  '.join(f'{k}: {v:.4f}' for k, v in ret_dict.items())
+                    self.logger.info(f'[Round {rnd}] {metrics_str}  wall_clock: {self.server.wall_clock_time}')
 
         except KeyboardInterrupt:
             ...
@@ -68,13 +59,8 @@ class FedSim:
                 
                 if (self.args.rnd - self.server.round <= 10) or (self.server.round % TEST_GAP == (TEST_GAP-1)):
                     ret_dict = self.server.test_all()
-                    res_text = f'[Round {self.server.round} | Wall clock time: {self.server.wall_clock_time}]\n'
-                    for k, v in ret_dict.items():
-                        res_text += f"{k}: {v:.4f}\n"
-                    
-                    print(res_text)       
-                    self.output.write(res_text)
-                    self.output.flush()
+                    metrics_str = '  '.join(f'{k}: {v:.4f}' for k, v in ret_dict.items())
+                    self.logger.info(f'[Round {self.server.round}] {metrics_str}  wall_clock: {self.server.wall_clock_time}')
 
         except KeyboardInterrupt:
             ...
