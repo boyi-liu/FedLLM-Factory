@@ -27,6 +27,8 @@ def load_model(args):
 
 def load_tokenizer(args):
     tokenizer = AutoTokenizer.from_pretrained(args.model)
+    if args.task_type == 'CAUSAL_LM':
+        tokenizer.padding_side = 'left'
     return tokenizer
 
 def load_lora_config(args):
