@@ -41,7 +41,6 @@ from utils.model_utils import load_model, load_tokenizer, load_lora_config
 from utils.time_utils import time_record
 from utils.trace_utils import get_trainable_windows
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Event primitives
 # ─────────────────────────────────────────────────────────────────────────────
