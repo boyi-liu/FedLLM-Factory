@@ -20,13 +20,13 @@ datasets:
 
   dolly:
     task_type: CAUSAL_LM
-    metrics: [perplexity]
-    primary_metric: perplexity
+    metrics: [perplexity, rouge]
+    primary_metric: rougeL
 
   alpaca:
     task_type: CAUSAL_LM
-    metrics: [perplexity]
-    primary_metric: perplexity
+    metrics: [perplexity, rouge]
+    primary_metric: rougeL
 
   sensorqa:
     task_type: CAUSAL_LM

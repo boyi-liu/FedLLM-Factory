@@ -4,6 +4,7 @@ import re
 
 import torch
 import yaml
+from rouge_score import rouge_scorer
 from torch.amp import autocast
 from torch.utils.data import DataLoader
 
@@ -90,6 +91,9 @@ class Evaluator:
         exact_matches = 0
         total_samples = 0
         run_exact_match = 'exact_match' in self.metrics
+        run_rouge = 'rouge' in self.metrics
+        rouge_scores = {'rouge1': 0.0, 'rouge2': 0.0, 'rougeL': 0.0}
+        scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True) if run_rouge else None
 
         for batch in self.eval_loader:
             input_ids = torch.stack(batch['input_ids']).transpose(0, 1).to(model.device)
@@ -99,11 +103,16 @@ class Evaluator:
                 total_loss += outputs.loss.item()
                 total_steps += 1
 
-            if run_exact_match and 'answer' in batch:
+            if (run_exact_match or run_rouge) and 'answer' in batch:
                 pred_ids = model.generate(input_ids, max_new_tokens=64)
                 pred_text = model.config.tokenizer.decode(pred_ids[0], skip_special_tokens=True)
                 gold = batch['answer'][0]
-                exact_matches += int(_normalize(pred_text) == _normalize(gold))
+                if run_exact_match:
+                    exact_matches += int(_normalize(pred_text) == _normalize(gold))
+                if run_rouge:
+                    scores = scorer.score(gold, pred_text)
+                    for key in rouge_scores:
+                        rouge_scores[key] += scores[key].fmeasure
                 total_samples += 1
 
         avg_loss = total_loss / total_steps if total_steps > 0 else 0.0
@@ -112,6 +121,9 @@ class Evaluator:
         result = {'eval_loss': avg_loss, 'perplexity': perplexity}
         if run_exact_match and total_samples > 0:
             result['exact_match'] = exact_matches / total_samples
+        if run_rouge and total_samples > 0:
+            for key in rouge_scores:
+                result[key] = rouge_scores[key] / total_samples
         return result
 
     # ------------------------------------------------------------------
