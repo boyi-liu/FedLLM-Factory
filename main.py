@@ -48,15 +48,15 @@ class FedSim:
         except KeyboardInterrupt:
             ...
         finally:
-            pass
-        
-    
+            self.server.save_adapter()
+
+
     def simulate_ddl(self):
         TEST_GAP = self.args.test_gap
         try:
             while self.server.early_break is False:
                 self.server.run()
-                
+
                 if (self.args.rnd - self.server.round <= 10) or (self.server.round % TEST_GAP == (TEST_GAP-1)):
                     ret_dict = self.server.test_all()
                     metrics_str = '  '.join(f'{k}: {v:.4f}' for k, v in ret_dict.items())
@@ -65,7 +65,7 @@ class FedSim:
         except KeyboardInterrupt:
             ...
         finally:
-            pass
+            self.server.save_adapter()
 
 if __name__ == '__main__':
     FedSim(args=args_parser())
