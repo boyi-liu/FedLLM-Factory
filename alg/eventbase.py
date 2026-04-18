@@ -291,7 +291,21 @@ class EventBaseServer(BaseServer):
         res_dict = {}
         for k in all_metrics[0].keys():
             res_dict[k] = sum(m[k] for m in all_metrics) / len(all_metrics)
+
         return res_dict
+
+    def save_adapter(self):
+        import os
+        import torch
+        args = self.args
+        name = (
+            f'{args.alg}_{args.dataset}_{args.model}_'
+            f'{args.cn}c_{args.epoch}E_lr{args.lr}'
+        )
+        adapter_path = os.path.join(args.suffix, name, 'adapter')
+        os.makedirs(adapter_path, exist_ok=True)
+        torch.save(self.global_lora, os.path.join(adapter_path, 'lora_weights.pt'))
+        print(f'Adapter saved to {adapter_path}')
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
