@@ -3,9 +3,11 @@ import importlib
 import yaml
 
 
-def args_parser():
+def build_parser() -> argparse.ArgumentParser:
+    """Create and return the base argument parser with all common args pre-registered.
+    Callers can add extra arguments before parsing."""
     parser = argparse.ArgumentParser()
-    
+
     ### basic setting
     parser.add_argument('--alg', type=str, default='fedit', help='algorithm name')
     parser.add_argument('--suffix', type=str, default='default', help='experiment suffix')
@@ -31,7 +33,7 @@ def args_parser():
 
     ### async
     parser.add_argument('--decay', type=float, default=0.5, help='decay rate')
-    
+
     ### event mode
     parser.add_argument('--mode', type=str, default='prototype', help='simulation mode: prototype or realistic')
     parser.add_argument('--upload_bandwidth', type=float, default=1.0, help='uplink bandwidth in Mbps for upload delay estimation')
@@ -46,11 +48,16 @@ def args_parser():
         yaml_config = yaml.load(f.read(), Loader=yaml.Loader)
     parser.set_defaults(**yaml_config)
 
+    return parser
+
+
+def args_parser():
+    parser = build_parser()
+
     # === read args from command ===
     args, _ = parser.parse_known_args()
 
     # === read specific args from each method
     alg_module = importlib.import_module(f'alg.{args.alg}')
-
     spec_args = alg_module.add_args(parser) if hasattr(alg_module, 'add_args') else args
     return spec_args

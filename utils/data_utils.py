@@ -36,12 +36,14 @@ def get_format_func(args, tokenizer):
         def _format_QA(example):
             prompt = f"Instruct: {example['input_ids']}\nAnswer:"
             full_text = prompt + example["label"]
-            input_ids = tokenizer(
+            encoded = tokenizer(
                 full_text,
                 truncation=True,
                 padding="max_length",
                 max_length=512
-            )["input_ids"]
+            )
+            input_ids = encoded["input_ids"]
+            attention_mask = encoded["attention_mask"]
             prompt_len = min(
                 len(tokenizer(prompt, add_special_tokens=False)["input_ids"]),
                 len(input_ids)
@@ -52,6 +54,7 @@ def get_format_func(args, tokenizer):
             ]
             return {
                 "input_ids": input_ids,
+                "attention_mask": attention_mask,
                 "labels": labels
             }
         return _format_QA

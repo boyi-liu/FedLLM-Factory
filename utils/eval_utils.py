@@ -4,9 +4,9 @@ import re
 
 import torch
 import yaml
-from rouge_score import rouge_scorer
 from torch.amp import autocast
 from torch.utils.data import DataLoader
+from utils.model_utils import load_tokenizer
 
 
 def _load_eval_config():
@@ -31,22 +31,21 @@ def get_dataset_config(dataset_name: str) -> dict:
 
 class Evaluator:
     """
-    Stateless evaluator decoupled from Trainer.
-    Instantiated once per client and reused across rounds.
+    Lightweight per-round evaluator: loss and perplexity only (CAUSAL_LM),
+    or accuracy (SEQ_CLS).  Instantiated once per client and reused across rounds.
+    For full-metric evaluation after training, use eval.py.
     """
 
     def __init__(self, args, dataset):
         self.args = args
         self.dataset_cfg = get_dataset_config(args.dataset)
         self.task_type = self.dataset_cfg['task_type']
-        self.metrics = self.dataset_cfg['metrics']
-        self.primary_metric = self.dataset_cfg['primary_metric']
+        self.tokenizer = load_tokenizer(args)
 
-        eval_samples = _EVAL_CONFIG.get('eval_samples', 0)
         test_data = dataset['test']
+        eval_samples = _EVAL_CONFIG.get('eval_samples', 0)
         if eval_samples > 0:
             test_data = test_data.select(range(min(eval_samples, len(test_data))))
-
         self.eval_loader = DataLoader(test_data, batch_size=1, shuffle=False)
 
     # ------------------------------------------------------------------
@@ -54,7 +53,6 @@ class Evaluator:
     # ------------------------------------------------------------------
 
     def evaluate(self, model, round_idx=None, client_id=None) -> dict:
-        """Run evaluation and return a metrics dict."""
         model.eval()
         if self.task_type == 'SEQ_CLS':
             result = self._eval_seq_cls(model)
@@ -88,43 +86,18 @@ class Evaluator:
     def _eval_causal_lm(self, model) -> dict:
         total_loss = 0.0
         total_steps = 0
-        exact_matches = 0
-        total_samples = 0
-        run_exact_match = 'exact_match' in self.metrics
-        run_rouge = 'rouge' in self.metrics
-        rouge_scores = {'rouge1': 0.0, 'rouge2': 0.0, 'rougeL': 0.0}
-        scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeL'], use_stemmer=True) if run_rouge else None
-
         for batch in self.eval_loader:
             input_ids = torch.stack(batch['input_ids']).transpose(0, 1).to(model.device)
+            attention_mask = torch.stack(batch['attention_mask']).transpose(0, 1).to(model.device)
             labels = torch.stack(batch['labels']).transpose(0, 1).to(model.device)
             with torch.no_grad(), autocast('cuda'):
-                outputs = model(input_ids=input_ids, labels=labels)
+                outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
                 total_loss += outputs.loss.item()
                 total_steps += 1
 
-            if (run_exact_match or run_rouge) and 'answer' in batch:
-                pred_ids = model.generate(input_ids, max_new_tokens=64)
-                pred_text = model.config.tokenizer.decode(pred_ids[0], skip_special_tokens=True)
-                gold = batch['answer'][0]
-                if run_exact_match:
-                    exact_matches += int(_normalize(pred_text) == _normalize(gold))
-                if run_rouge:
-                    scores = scorer.score(gold, pred_text)
-                    for key in rouge_scores:
-                        rouge_scores[key] += scores[key].fmeasure
-                total_samples += 1
-
         avg_loss = total_loss / total_steps if total_steps > 0 else 0.0
         perplexity = math.exp(avg_loss) if avg_loss < 20 else float('inf')
-
-        result = {'eval_loss': avg_loss, 'perplexity': perplexity}
-        if run_exact_match and total_samples > 0:
-            result['exact_match'] = exact_matches / total_samples
-        if run_rouge and total_samples > 0:
-            for key in rouge_scores:
-                result[key] = rouge_scores[key] / total_samples
-        return result
+        return {'eval_loss': avg_loss, 'perplexity': perplexity}
 
     # ------------------------------------------------------------------
     # Logging

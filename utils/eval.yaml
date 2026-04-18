@@ -15,17 +15,17 @@ datasets:
 
   gsm8k:
     task_type: CAUSAL_LM
-    metrics: [exact_match, perplexity]
+    metrics: [exact_match, perplexity, mmlu]
     primary_metric: exact_match
 
   dolly:
     task_type: CAUSAL_LM
-    metrics: [perplexity, rouge]
+    metrics: [perplexity, rouge, mmlu]
     primary_metric: rougeL
 
   alpaca:
     task_type: CAUSAL_LM
-    metrics: [perplexity, rouge]
+    metrics: [perplexity, rouge, mmlu]
     primary_metric: rougeL
 
   sensorqa:
@@ -38,5 +38,15 @@ datasets:
     metrics: [perplexity]
     primary_metric: perplexity
 
+
 # Global eval settings
-eval_samples: 100   # max samples used during evaluation (0 = full test set)
+eval_samples: 100        # max samples for per-round evaluation (loss/perplexity only)
+final_eval_samples: 200  # max samples for final evaluation (all metrics incl. generation)
+final_eval_batch_size: 8 # batch size for model.generate() during final evaluation
+
+# Global benchmarks — evaluated on the aggregated model at final evaluation only
+global_benchmarks:
+  mmlu:
+    enabled: false        # set to true to enable
+    n_shot: 5             # few-shot examples per subject
+    max_per_subject: 100  # max test samples per subject (0 = full)
