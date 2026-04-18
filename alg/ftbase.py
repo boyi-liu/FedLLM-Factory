@@ -89,7 +89,7 @@ class FTBaseServer(BaseServer):
             f'{args.alg}_{args.dataset}_{args.model}_'
             f'{args.cn}c_{args.epoch}E_lr{args.lr}'
         )
-        adapter_path = os.path.join(args.suffix, name, 'adapter')
+        adapter_path = os.path.join(args.suffix, 'adapter', name)
         os.makedirs(adapter_path, exist_ok=True)
-        torch.save(self.global_lora, os.path.join(adapter_path, 'lora_weights.pt'))
+        torch.save(dict(self.global_lora), os.path.join(adapter_path, 'lora_weights.pt'))
         print(f'Adapter saved to {adapter_path}')
