@@ -8,6 +8,9 @@ utils/eval.yaml.
 Usage:
     python eval.py --suffix default --alg fedit --model <model_name_or_path> \
                    --dataset gsm8k --cn 10 --epoch 5 --lr 1e-4
+
+Which metrics are computed is controlled entirely by utils/eval.yaml (metrics field
+per dataset).  No extra flags needed — add/remove entries in the yaml to opt in/out.
 """
 
 import importlib
@@ -25,6 +28,7 @@ from utils.eval_utils import get_dataset_config, _normalize, _load_eval_config
 from utils.model_utils import load_model, load_tokenizer, load_lora_config
 from utils.data_utils import load_data
 from utils.options import build_parser
+from utils.logger import get_logger
 
 
 _EVAL_CONFIG = _load_eval_config()
@@ -35,12 +39,12 @@ _EVAL_CONFIG = _load_eval_config()
 # ------------------------------------------------------------------
 
 def _adapter_path(args) -> str:
-    base = f'exp/{args.suffix}'
+    base = f'{args.suffix}'
     name = (
         f'{args.alg}_{args.dataset}_{args.model}_'
         f'{args.cn}c_{args.epoch}E_lr{args.lr}'
     )
-    return os.path.join(base, name, 'adapter')
+    return os.path.join(base, 'adapter', name)
 
 
 # ------------------------------------------------------------------
@@ -109,6 +113,35 @@ class _RougeEvaluator:
                 totals[k] += scores[k].fmeasure
         n = len(predictions)
         return {k: v / n for k, v in totals.items()}
+
+
+class _F1Evaluator:
+    """Token-level F1 from a list of (pred, gold) pairs (SQuAD-style).
+
+    Tokens are obtained by normalising then splitting on whitespace.
+    F1 = 2 * precision * recall / (precision + recall), where
+      precision = |common| / |pred_tokens|
+      recall    = |common| / |gold_tokens|
+    """
+
+    @staticmethod
+    def _token_f1(pred: str, gold: str) -> float:
+        pred_tokens = _normalize(pred).split()
+        gold_tokens = _normalize(gold).split()
+        if not pred_tokens or not gold_tokens:
+            return float(pred_tokens == gold_tokens)
+        common = len(set(pred_tokens) & set(gold_tokens))
+        if common == 0:
+            return 0.0
+        precision = common / len(pred_tokens)
+        recall = common / len(gold_tokens)
+        return 2 * precision * recall / (precision + recall)
+
+    def evaluate(self, predictions: list) -> dict:
+        if not predictions:
+            return {'f1': 0.0}
+        total = sum(self._token_f1(p, g) for p, g in predictions)
+        return {'f1': total / len(predictions)}
 
 
 # ------------------------------------------------------------------
@@ -226,12 +259,15 @@ def _eval_client(model, tokenizer, client_idx: int, args, dataset_cfg: dict) -> 
         # generation-based metrics — one shared generation pass
         run_exact_match = 'exact_match' in metrics
         run_rouge = 'rouge' in metrics
-        if run_exact_match or run_rouge:
+        run_f1 = 'f1' in metrics
+        if run_exact_match or run_rouge or run_f1:
             predictions = _generate_predictions(model, tokenizer, args, client_idx)
             if run_exact_match:
                 result.update(_ExactMatchEvaluator().evaluate(predictions))
             if run_rouge:
                 result.update(_RougeEvaluator().evaluate(predictions))
+            if run_f1:
+                result.update(_F1Evaluator().evaluate(predictions))
 
     return result
 
@@ -260,12 +296,14 @@ def main():
     # Final parse
     args = add_args(parser)
 
+    args.suffix = f'exp/{args.suffix}'
+    logger = get_logger(args)
+
     # Derive task_type from dataset config
     dataset_cfg = get_dataset_config(args.dataset)
     args.task_type = dataset_cfg['task_type']
 
     adapter_path = _adapter_path(args)
-    print(f'Loading adapter from: {adapter_path}')
 
     tokenizer = load_tokenizer(args)
     base_model = load_model(args)
@@ -279,21 +317,19 @@ def main():
     # Per-client evaluation (all metrics except mmlu)
     all_metrics = []
     for cid in range(args.cn):
-        print(f'\n--- Client {cid} ---')
         metrics = _eval_client(model, tokenizer, cid, args, dataset_cfg)
         parts = ' | '.join(f'{k}: {v:.4f}' for k, v in metrics.items())
-        print(f'Client {cid} | {parts}')
+        print(f'[Client {cid}] {parts}')
         all_metrics.append(metrics)
 
     if all_metrics:
-        print('\n--- Aggregated ---')
         agg = {k: sum(m[k] for m in all_metrics) / len(all_metrics) for k in all_metrics[0]}
         parts = ' | '.join(f'{k}: {v:.4f}' for k, v in agg.items())
-        print(f'Avg | {parts}')
+        print(f'[Avg] {parts}')
+        logger.info(f'[Avg] {parts}')
 
     # MMLU — run once on the global model, triggered by eval.yaml config
     if 'mmlu' in dataset_cfg['metrics']:
-        print('\n--- MMLU ---')
         mmlu_cfg = _EVAL_CONFIG.get('global_benchmarks', {}).get('mmlu', {})
         mmlu_ev = _MMLUEvaluator(
             tokenizer,
@@ -301,7 +337,7 @@ def main():
             max_test_per_subject=mmlu_cfg.get('max_per_subject', 100),
         )
         mmlu_result = mmlu_ev.evaluate(model)
-        print(f"MMLU accuracy: {mmlu_result['mmlu_accuracy']:.4f}")
+        logger.info(f"[MMLU] mmlu_accuracy: {mmlu_result['mmlu_accuracy']:.4f}")
 
 
 if __name__ == '__main__':

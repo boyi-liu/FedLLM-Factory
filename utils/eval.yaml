@@ -1,42 +1,34 @@
 # Evaluation configuration: dataset -> task_type + metrics
 # task_type: SEQ_CLS | CAUSAL_LM
-# primary_metric: the metric used for model selection / reporting
 
 datasets:
   sst2:
     task_type: SEQ_CLS
     metrics: [accuracy]
-    primary_metric: accuracy
 
   imdb:
     task_type: SEQ_CLS
     metrics: [accuracy]
-    primary_metric: accuracy
 
   gsm8k:
     task_type: CAUSAL_LM
-    metrics: [exact_match, perplexity, mmlu]
-    primary_metric: exact_match
+    metrics: [exact_match, f1, perplexity, mmlu]
 
   dolly:
     task_type: CAUSAL_LM
-    metrics: [perplexity, rouge, mmlu]
-    primary_metric: rougeL
+    metrics: [perplexity, rouge, f1, mmlu]
 
   alpaca:
     task_type: CAUSAL_LM
-    metrics: [perplexity, rouge, mmlu]
-    primary_metric: rougeL
+    metrics: [perplexity, mmlu]
 
   sensorqa:
     task_type: CAUSAL_LM
-    metrics: [perplexity]
-    primary_metric: perplexity
+    metrics: [perplexity, rouge]
 
   homebench:
     task_type: CAUSAL_LM
-    metrics: [perplexity]
-    primary_metric: perplexity
+    metrics: [perplexity, f1]
 
 
 # Global eval settings
@@ -44,9 +36,8 @@ eval_samples: 100        # max samples for per-round evaluation (loss/perplexity
 final_eval_samples: 200  # max samples for final evaluation (all metrics incl. generation)
 final_eval_batch_size: 8 # batch size for model.generate() during final evaluation
 
-# Global benchmarks — evaluated on the aggregated model at final evaluation only
+# Global benchmarks — MMLU config (activated by adding 'mmlu' to a dataset's metrics)
 global_benchmarks:
   mmlu:
-    enabled: false        # set to true to enable
     n_shot: 5             # few-shot examples per subject
     max_per_subject: 100  # max test samples per subject (0 = full)
