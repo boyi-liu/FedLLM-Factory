@@ -21,6 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--rnd', type=int, default=10, help='number of rounds')
     parser.add_argument('--tg', type=int, default=1, help='test gap')
     parser.add_argument('--session_time', type=float, default=24, help='round session duration in hours')
+    parser.add_argument('--start_time', type=float, default=0.0, help='simulation start offset in hours from the earliest trace event')
 
     ### local training setting
     parser.add_argument('--bs', type=int, default=2, help='batch size')
@@ -32,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--test_gap', type=int, default=1, help='test interval')
 
     ### async
-    parser.add_argument('--decay', type=float, default=0.5, help='decay rate')
+    parser.add_argument('--decay', type=float, default=0.1, help='decay rate')
 
     ### event mode
     parser.add_argument('--mode', type=str, default='prototype', help='simulation mode: prototype or realistic')
@@ -58,6 +59,10 @@ def args_parser():
     args, _ = parser.parse_known_args()
 
     # === read specific args from each method
-    alg_module = importlib.import_module(f'alg.{args.alg}')
+    if args.mode == 'prototype':
+            alg_module = importlib.import_module(f'alg.{args.alg}')
+    elif args.mode == 'realistic':
+        alg_module = importlib.import_module(f'alg.{args.alg}_event')
+    # alg_module = importlib.import_module(f'alg.{args.alg}')
     spec_args = alg_module.add_args(parser) if hasattr(alg_module, 'add_args') else args
     return spec_args

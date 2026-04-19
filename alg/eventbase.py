@@ -181,22 +181,34 @@ class EventBaseServer(BaseServer):
         # Compute epoch from clients that have trace windows; fall back to now().
         all_starts = [w['start'] for c in clients for w in c.windows]
         epoch = min(all_starts) if all_starts else datetime.now()
+        self.epoch: datetime = epoch
         session_hours = getattr(args, 'session_time', 24)
-        self._deadline: datetime = epoch + timedelta(hours=session_hours)
+        
+
+        # Start offset: used by subclasses to distinguish historical windows.
+        start_offset_hours = getattr(args, 'start_time', 0.0)
+        self.start_datetime: datetime = epoch + timedelta(hours=start_offset_hours)
+        self._deadline: datetime = self.start_datetime + timedelta(hours=session_hours)
 
         # Clients with no trace data get one large window covering the full session.
         for client in clients:
             if client.windows is None:
-                client.windows = [{'start': epoch, 'end': self._deadline}]
+                client.windows = [{'start': self.start_datetime, 'end': self._deadline}]
                 print(f'[init] Client {client.id}: no trace data — '
-                      f'using full session window ({epoch} → {self._deadline}).')
+                      f'using full session window ({self.start_datetime} → {self._deadline}).')
 
-        # Global event queue — pre-populated with all availability windows
+        # Global event queue — pre-populated with all availability windows.
+        # Windows ending before start_datetime are skipped entirely (used as
+        # historical data by subclasses).  Windows that straddle start_datetime
+        # are clipped so the open event fires at start_datetime.
         self.event_queue = EventQueue()
         for client in clients:
             for window in client.windows:
-                self.event_queue.push(Event(window['start'], EventType.WINDOW_OPEN, client))
-                self.event_queue.push(Event(window['end'],   EventType.WINDOW_CLOSE, client))
+                if window['end'] <= self.start_datetime:
+                    continue
+                start = max(window['start'], self.start_datetime)
+                self.event_queue.push(Event(start,          EventType.WINDOW_OPEN,  client))
+                self.event_queue.push(Event(window['end'],  EventType.WINDOW_CLOSE, client))
 
     # ── public interface ──────────────────────────────────────────────────────
 
