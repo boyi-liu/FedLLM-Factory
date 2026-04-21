@@ -126,7 +126,12 @@ class EventBaseClient(BaseClient):
             
     @time_record
     def run(self, model):
-        self.trainer.train(model)
+        start_time = getattr(self, '_train_start_time', None)
+        window_end_time = getattr(self, '_train_window_end', None)
+        if start_time is not None and window_end_time is not None:
+            self.trainer.train_windowed(model, start_time, window_end_time)
+        else:
+            self.trainer.train(model)
         self.lora = {k: v.clone() for k, v in model.state_dict().items() if "lora_" in k}
 
     def local_test(self, model):
@@ -331,16 +336,25 @@ class EventBaseServer(BaseServer):
 
         print(f'[{self.wall_clock_time}] Assigning training to client {client.id}.')
         client.state = ClientState.TRAINING
-        # Run actual training; client.training_time is set by @time_record
+
+        client._train_start_time = self.wall_clock_time
+        client._train_window_end = self._get_client_window_close(client)
         client.run(self.model)
+
         # Restore global weights so the next client trains from the same base
         self.model.load_state_dict(self.global_lora, strict=False)
         finish_at = self.wall_clock_time + timedelta(seconds=client.training_time)
-        
+
         if not self._window_closes_before_upload(client, finish_at):
             self.event_queue.push(Event(finish_at, EventType.TRAINING_DONE, client))
         
         
+    def _get_client_window_close(self, client: EventBaseClient) -> Optional[datetime]:
+        """Return the nearest simulated WINDOW_CLOSE time for *client*, or None."""
+        closes = [e.time for e in self.event_queue._heap
+                  if e.type == EventType.WINDOW_CLOSE and e.client is client]
+        return min(closes) if closes else None
+
     def _window_closes_before_upload(self, client: EventBaseClient, upload_done_at: datetime) -> bool:
         return any(
             e.type == EventType.WINDOW_CLOSE and e.client is client and e.time < upload_done_at
