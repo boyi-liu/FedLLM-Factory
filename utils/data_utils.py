@@ -36,6 +36,9 @@ def get_format_func(args, tokenizer):
         def _format_QA(example):
             prompt = f"Instruct: {example['input_ids']}\nAnswer:"
             full_text = prompt + example["label"]
+            # Training data must use right padding: left-padded inputs cause NaN
+            # in fp16 attention when attention_mask zeros out all causal context.
+            tokenizer.padding_side = 'right'
             encoded = tokenizer(
                 full_text,
                 truncation=True,

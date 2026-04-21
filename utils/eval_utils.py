@@ -120,5 +120,5 @@ class Evaluator:
 def _normalize(text: str) -> str:
     """Lowercase and strip punctuation/whitespace for exact-match comparison."""
     text = text.lower().strip()
-    text = re.sub(r'[^\w\s]', '', text)
+    text = re.sub(r'[^\w\s]', ' ', text)
     return ' '.join(text.split())

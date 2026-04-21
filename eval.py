@@ -65,6 +65,7 @@ def _generate_predictions(model, tokenizer, args, client_idx: int) -> list:
 
     batch_size = _EVAL_CONFIG.get('final_eval_batch_size', 8)
     predictions = []
+    tokenizer.padding_side = 'left'
     for batch in DataLoader(raw_ds, batch_size=batch_size, shuffle=False):
         prompts = [f"Instruct: {inp}\nAnswer:" for inp in batch['input_ids']]
         enc = tokenizer(
@@ -126,11 +127,12 @@ class _F1Evaluator:
 
     @staticmethod
     def _token_f1(pred: str, gold: str) -> float:
+        from collections import Counter
         pred_tokens = _normalize(pred).split()
         gold_tokens = _normalize(gold).split()
         if not pred_tokens or not gold_tokens:
             return float(pred_tokens == gold_tokens)
-        common = len(set(pred_tokens) & set(gold_tokens))
+        common = sum((Counter(pred_tokens) & Counter(gold_tokens)).values())
         if common == 0:
             return 0.0
         precision = common / len(pred_tokens)
